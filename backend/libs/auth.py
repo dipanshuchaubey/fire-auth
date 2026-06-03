@@ -1,11 +1,39 @@
+import os
 import firebase_admin
 from firebase_admin import credentials, auth
 from fastapi import Request, HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-# Make sure you have set the GOOGLE_APPLICATION_CREDENTIALS environment variable 
-# pointing to your service account key JSON file, or provide the credential explicitly.
-default_app = firebase_admin.initialize_app()
+# Initialize Firebase Admin using service account if available, otherwise default credentials
+if not firebase_admin._apps:
+    key_path = None
+    possible_keys = [
+        "service-account.json",
+        "../service-account.json",
+        "firebase-key.json",
+        "../firebase-key.json",
+        "backend/service-account.json"
+    ]
+    for p in possible_keys:
+        if os.path.exists(p):
+            key_path = p
+            break
+            
+    if key_path:
+        try:
+            cred = credentials.Certificate(key_path)
+            firebase_admin.initialize_app(cred)
+            print(f"Firebase Admin initialized using service account: {key_path}")
+        except Exception as e:
+            print(f"Error initializing Firebase with service account {key_path}: {e}")
+            firebase_admin.initialize_app()
+    else:
+        try:
+            firebase_admin.initialize_app()
+            print("Firebase Admin initialized using default credentials.")
+        except Exception as e:
+            print(f"Firebase Admin failed to initialize: {e}")
+
 security = HTTPBearer()
 
 def get_auth_user(credentials: HTTPAuthorizationCredentials = Security(security)):
