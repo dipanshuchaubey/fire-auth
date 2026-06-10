@@ -120,9 +120,8 @@ export default function AdminDashboard() {
   // Invite user inputs
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('user')
-  const [inviteTenant, setInviteTenant] = useState('tenant-starter')
   const [inviteBlocked, setInviteBlocked] = useState<string[]>([])
-  const [lastInviteLink, setLastInviteLink] = useState<string | null>(null)
+  const [lastInviteSuccess, setLastInviteSuccess] = useState<boolean>(false)
 
   const auth = getAuth(firebaseApp)
   const router = useRouter()
@@ -131,15 +130,16 @@ export default function AdminDashboard() {
     action: string,
     endpoint: string,
     status: number | string,
-    details: string,
+    details: any,
     error = false
   ) => {
+    const stringDetails = typeof details === 'string' ? details : JSON.stringify(details);
     const entry: LogEntry = {
       timestamp: new Date().toLocaleTimeString(),
       action,
       endpoint,
       status,
-      details,
+      details: stringDetails,
       error
     }
     setLogs(prev => [entry, ...prev].slice(0, 30))
@@ -470,7 +470,7 @@ export default function AdminDashboard() {
   // Handle Invite User
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLastInviteLink(null)
+    setLastInviteSuccess(false)
     setError(null)
 
     try {
@@ -481,7 +481,6 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           email: inviteEmail,
           role: inviteRole,
-          tenant_id: inviteTenant,
           blocked_features: inviteBlocked
         })
       })
@@ -492,9 +491,9 @@ export default function AdminDashboard() {
           'Invite User',
           '/users/invite',
           200,
-          `Invited ${inviteEmail} to ${inviteTenant}`
+          `Invited ${inviteEmail}`
         )
-        setLastInviteLink(data.invite_link)
+        setLastInviteSuccess(true)
         setInviteEmail('')
         setInviteBlocked([])
         fetchUsers(headers)
@@ -894,7 +893,7 @@ export default function AdminDashboard() {
             }}
             onClose={() => setError(null)}
           >
-            {error}
+            {typeof error === 'string' ? error : JSON.stringify(error)}
           </Alert>
         )}
 
@@ -1392,35 +1391,7 @@ export default function AdminDashboard() {
                           />
                         </Grid>
 
-                        <Grid size={{ xs: 12, sm: 4 }}>
-                          <FormControl fullWidth size="small">
-                            <InputLabel
-                              sx={{ color: 'rgba(255, 255, 255, 0.4)' }}
-                            >
-                              Tenant ID
-                            </InputLabel>
-                            <Select
-                              value={inviteTenant}
-                              label="Tenant ID"
-                              onChange={e => setInviteTenant(e.target.value)}
-                              sx={{
-                                color: 'white',
-                                borderRadius: '10px',
-                                backgroundColor: 'rgba(255,255,255,0.03)',
-                                '& .MuiOutlinedInput-notchedOutline': {
-                                  borderColor: 'rgba(255,255,255,0.1)'
-                                }
-                              }}
-                            >
-                              <MenuItem value="tenant-starter">
-                                Tenant Starter
-                              </MenuItem>
-                              <MenuItem value="tenant-enterprise">
-                                Tenant Enterprise
-                              </MenuItem>
-                            </Select>
-                          </FormControl>
-                        </Grid>
+                        {/* Tenant ID is now automatically assigned from the admin's profile */}
 
                         <Grid size={{ xs: 12, sm: 4 }}>
                           <FormControl fullWidth size="small">
@@ -1505,13 +1476,13 @@ export default function AdminDashboard() {
                               py: 1
                             }}
                           >
-                            Send Invite Link
+                            Send Invite
                           </Button>
                         </Grid>
                       </Grid>
                     </Box>
 
-                    {lastInviteLink && (
+                    {lastInviteSuccess && (
                       <Box
                         sx={{
                           p: 2.5,
@@ -1525,37 +1496,13 @@ export default function AdminDashboard() {
                           variant="subtitle2"
                           sx={{ color: '#4ade80', fontWeight: 700, mb: 1 }}
                         >
-                          User Successfully Created in Firebase Auth!
+                          User Successfully Invited!
                         </Typography>
                         <Typography
                           variant="body2"
-                          sx={{ color: 'rgba(255,255,255,0.8)', mb: 1 }}
+                          sx={{ color: 'rgba(255,255,255,0.8)' }}
                         >
-                          <strong>Password Setup / Activation Link:</strong>
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            wordBreak: 'break-all',
-                            bgcolor: 'rgba(0,0,0,0.3)',
-                            p: 1,
-                            borderRadius: '6px',
-                            display: 'block',
-                            color: '#818cf8',
-                            fontFamily: 'monospace'
-                          }}
-                        >
-                          <a
-                            href={lastInviteLink}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{
-                              color: 'inherit',
-                              textDecoration: 'underline'
-                            }}
-                          >
-                            {lastInviteLink}
-                          </a>
+                          The invitation has been securely saved. The user can now log in using Google Sign-In, and their account will automatically be linked to your tenant with the assigned role.
                         </Typography>
                       </Box>
                     )}

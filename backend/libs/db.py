@@ -91,6 +91,7 @@ def get_user_attributes(uid: str) -> dict:
                 return doc.to_dict()
         except Exception as e:
             print(f"Firestore get_user_attributes error: {e}")
+    return {}
 
 def set_user_attributes(uid: str, blocked_features: list[str]):
     if use_firestore:
@@ -145,3 +146,18 @@ def delete_resource(resource_id: str):
             return
         except Exception as e:
             print(f"Firestore delete_resource error: {e}")
+
+# Invitation Helpers
+def create_invitation(email: str, role: str, tenant_id: str):
+    if use_firestore:
+        try:
+            # Using the email as the document ID for faster lookup and uniqueness
+            db_client.collection("invitations").document(email).set({
+                "role": role,
+                "tenant_id": tenant_id
+            })
+            return True
+        except Exception as e:
+            print(f"Firestore create_invitation error: {e}")
+            raise e
+    return False

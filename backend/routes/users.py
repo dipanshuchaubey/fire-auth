@@ -12,7 +12,6 @@ allow_admin = RoleChecker(["admin"])
 class InviteUserModel(BaseModel):
     email: str
     role: str
-    tenant_id: str
     blocked_features: list[str] = []
 
 class UpdateClaimsModel(BaseModel):
@@ -79,25 +78,16 @@ def get_my_profile(user=Depends(get_auth_user)):
 @router.post("/invite")
 def invite_user(payload: InviteUserModel, user=Depends(allow_admin)):
     try:
-        # 1. Create the user in Firebase (without setting a password)
-        new_user = auth.create_user(email=payload.email)
-        
-        # 2. Assign the tenant ID and role custom claims in Firebase Auth JWT
-        auth.set_custom_user_claims(new_user.uid, {
-            "role": payload.role,
-            "tenant_id": payload.tenant_id
-        })
-        
-        # 3. Store user-specific attributes (blocked features) in the Database
-        db.set_user_attributes(new_user.uid, payload.blocked_features)
-        
-        # 4. Generate invite/password reset link
-        invite_link = auth.generate_password_reset_link(payload.email)
+        # Get the inviting admin's tenant_id
+        admin_tenant_id = user.get("tenant_id")
+        if not admin_tenant_id:
+            raise HTTPException(status_code=400, detail="Admin does not have a tenant_id assigned.")
+            
+        # Store the invitation in Firestore
+        db.create_invitation(payload.email, payload.role, admin_tenant_id)
         
         return {
-            "message": "User invited successfully",
-            "uid": new_user.uid,
-            "invite_link": invite_link
+            "message": "User invited successfully. They can now sign in with Google."
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
